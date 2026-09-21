@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>eresjee_serrr - Realistic Volumetric DMX Studio</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #020204;
+      font-family: 'Consolas', 'Segoe UI', monospace, sans-serif;
+      color: #e0e0e0;
+    }
+
+    /* 1. LOADING SCREEN */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #050508;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.8s ease, visibility 0.8s;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(0, 229, 255, 0.1);
+      border-left-color: #00e5ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: #00e5ff;
+      text-transform: uppercase;
+      text-shadow: 0 0 15px rgba(0, 229, 255, 0.6);
+    }
+
+    /* 2. HEADER */
+    #web-header {
+      position: fixed;
+      top: 15px;
+      left: 20px;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .brand-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      background: linear-gradient(45deg, #00e5ff, #ff0055);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .brand-tag {
+      font-size: 9px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      display: block;
+    }
+
+    /* 3. VIEWPORT CANVAS */
+    #canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    /* 4. DMX PRO MIXER CONSOLE ULTRA */
+    #console-wrapper {
+      position: fixed;
+      bottom: 10px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      z-index: 100;
+      padding: 0 10px;
+      pointer-events: none;
+    }
+
+    #dmx-console {
+      pointer-events: auto;
+      background: linear-gradient(180deg, #14161d 0%, #08090c 100%);
+      border: 1px solid #2a2e3d;
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      gap: 14px;
+      max-width: 98vw;
+      overflow-x: auto;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.95), inset 0 1px 1px rgba(255,255,255,0.1);
+      backdrop-filter: blur(15px);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #dmx-console::-webkit-scrollbar {
+      height: 6px;
+    }
+    #dmx-console::-webkit-scrollbar-thumb {
+      background: #00e5ff;
+      border-radius: 3px;
+    }
+
+    .console-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid #222633;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      font-size: 9px;
+      font-weight: 800;
+      color: #00e5ff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #222633;
+      padding-bottom: 4px;
+      margin-bottom: 2px;
+      text-align: center;
+    }
+
+    .fader-group-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .fader-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .fader-item label {
+      font-size: 8px;
+      color: #aaa;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    input[type=range] {
+      accent-color: #00e5ff;
+      cursor: pointer;
+    }
+    .v-fader {
+      writing-mode: bt-lr;
+      -webkit-appearance: slider-vertical;
+      width: 16px;
+      height: 70px;
+    }
+    .h-fader {
+      width: 75px;
+    }
+
+    input[type=color] {
+      border: 1px solid #444;
+      border-radius: 4px;
+      width: 28px;
+      height: 22px;
+      cursor: pointer;
+      background: none;
+    }
+
+    select {
+      background: #181a24;
+      color: #00e5ff;
+      border: 1px solid #33384a;
+      border-radius: 4px;
+      font-size: 9px;
+      padding: 3px;
+      outline: none;
+    }
+
+    /* Buttons */
+    .btn-matrix {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .dmx-btn {
+      background: #1c1f2b;
+      border: 1px solid #33384a;
+      color: #ccc;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-size: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.15s;
+    }
+    .dmx-btn:hover {
+      background: #00e5ff;
+      color: #000;
+      border-color: #00e5ff;
+      box-shadow: 0 0 10px rgba(0,229,255,0.5);
+    }
+    .dmx-btn.active {
+      background: #ff0055;
+      color: #fff;
+      border-color: #ff0055;
+      box-shadow: 0 0 10px rgba(255,0,85,0.6);
+    }
+    .dmx-btn-blackout {
+      background: #440000;
+      border-color: #ff0000;
+      color: #ff8888;
+      grid-column: span 2;
+    }
+    .dmx-btn-blackout.active {
+      background: #ff0000;
+      color: #fff;
+      box-shadow: 0 0 15px #ff0000;
+    }
+
+    #audio-file { display: none; }
+  </style>
+
+  <!-- Three.js & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-title">eresjee_serrr</div>
+    <div style="font-size: 10px; color: #666; margin-top: 6px;">COMPILING VOLUMETRIC LIGHT SHADERS & PRISM...</div>
+  </div>
+
+  <!-- Judul Web -->
+  <div id="web-header">
+    <div class="brand-title">eresjee_serrr</div>
+    <span class="brand-tag">Ultra-Realistic DMX Lighting Studio</span>
+  </div>
+
+  <div id="canvas-container"></div>
+  <audio id="bg-audio" loop></audio>
+
+  <!-- MIXER DMX CONSOLE ADVANCED -->
+  <div id="console-wrapper">
+    <div id="dmx-console">
+      
+      <!-- SECTION 1: MASTER & PRESETS -->
+      <div class="console-section">
+        <div class="section-title">Master / Scenes</div>
+        <div class="btn-matrix">
+          <button class="dmx-btn" onclick="applyScene('white')">Full White</button>
+          <button class="dmx-btn" onclick="applyScene('prism')">Prism Show</button>
+          <button class="dmx-btn" onclick="applyScene('rgb')">Cyber Punk</button>
+          <button class="dmx-btn" onclick="applyScene('warm')">Warm Concert</button>
+          <button class="dmx-btn dmx-btn-blackout" id="bo-btn" onclick="toggleBlackout()">BLACKOUT (BO)</button>
+        </div>
+      </div>
+
+      <!-- SECTION 2: BEAM & PRISM (CAHAYA MENCAR) -->
+      <div class="console-section">
+        <div class="section-title">Beam & Prism FX</div>
+        <div class="fader-group-row">
+          <div class="fader-item">
+            <label>Master</label>
+            <input type="range" class="v-fader" id="beam-dim" min="0" max="1" step="0.01" value="1">
+          </div>
+          <div class="fader-item">
+            <label>Prism (Mencar)</label>
+            <select id="prism-mode">
+              <option value="1">1 Beam (Fokus)</option>
+              <option value="3">3 Beams (Mencar)</option>
+              <option value="8">8 Beams (Mencar Wide)</option>
+            </select>
+          </div>
+          <div class="fader-item">
+            <label>Prism Angle</label>
+            <input type="range" class="v-fader" id="prism-angle" min="0.1" max="1.5" step="0.05" value="0.4">
+          </div>
+          <div class="fader-item">
+            <label>Gobo Pattern</label>
+            <select id="gobo-select">
+              <option value="open">Open (Solid)</option>
+              <option value="ring">Ring Circle</option>
+              <option value="dots">Multi Dots</option>
+              <option value="stars">Star Burst</option>
+            </select>
+          </div>
+          <div class="fader-item">
+            <label>Color</label>
+            <input type="color" id="beam-color" value="#ffffff">
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: PAN / TILT & AUTO SHAPE MOVEMENT -->
+      <div class="console-section">
+        <div class="section-title">Pan / Tilt & Shapes</div>
+        <div class="fader-group-row">
+          <div class="fader-item">
+            <label>Pan</label>
+            <input type="range" class="v-fader" id="beam-pan" min="-180" max="180" value="0">
+          </div>
+          <div class="fader-item">
+            <label>Tilt</label>
+            <input type="range" class="v-fader" id="beam-tilt" min="-90" max="90" value="0">
+          </div>
+          <div class="fader-item">
+            <label>Auto Shape</label>
+            <select id="auto-shape">
+              <option value="none">Manual</option>
+              <option value="circle">Circle Sweep</option>
+              <option value="eight">Figure 8</option>
+              <option value="wave">Wave Sweep</option>
+            </select>
+          </div>
+          <div class="fader-item">
+            <label>Shape Speed</label>
+            <input type="range" class="v-fader" id="shape-speed" min="0" max="5" step="0.1" value="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 4: PAR LED & STROBE PANEL -->
+      <div class="console-section">
+        <div class="section-title">Par & Strobe Panel</div>
+        <div class="fader-group-row">
+          <div class="fader-item">
+            <label>Par Dim</label>
+            <input type="range" class="v-fader" id="par-dim" min="0" max="1" step="0.01" value="1">
+          </div>
+          <div class="fader-item">
+            <label>Par Color</label>
+            <input type="color" id="par-color" value="#ffffff">
+          </div>
+          <div class="fader-item">
+            <label>Strobe Dim</label>
+            <input type="range" class="v-fader" id="strobe-dim" min="0" max="1" step="0.01" value="1">
+          </div>
+          <div class="fader-item">
+            <label>Strobe Speed</label>
+            <input type="range" class="v-fader" id="strobe-speed" min="0" max="60" value="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 5: AUDIO PLAYER & ENVIRONMENT -->
+      <div class="console-section">
+        <div class="section-title">Stage Environment</div>
+        <div class="fader-group-row">
+          <div class="fader-item">
+            <label>Stage Fog</label>
+            <input type="range" class="h-fader" id="fog-density" min="0.005" max="0.03" step="0.001" value="0.015">
+          </div>
+          <div class="fader-item">
+            <label>Audio Player</label>
+            <div style="display:flex; gap:4px;">
+              <button class="dmx-btn" onclick="document.getElementById('audio-file').click()">Select Song</button>
+              <button class="dmx-btn" id="play-btn">▶</button>
+            </div>
+            <input type="file" id="audio-file" accept="audio/*">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // 1. HILANGKAN LOADING SCREEN
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const loader = document.getElementById('loading-screen');
+        loader.style.opacity = '0';
+        loader.style.visibility = 'hidden';
+      }, 800);
+    });
+
+    // 2. THREE.JS SCENE SETUP DENGAN SHADER LIGHTING REALISTIS
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020204);
+
+    let currentFogDensity = 0.015;
+    scene.fog = new THREE.FogExp2(0x020204, currentFogDensity);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 9, 32);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 4, 0);
+
+    // Stage Grid & Truss
+    const grid = new THREE.GridHelper(50, 40, 0x00e5ff, 0x11131a);
+    scene.add(grid);
+
+    const trussGeo = new THREE.BoxGeometry(32, 0.6, 0.6);
+    const trussMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.8 });
+    const truss = new THREE.Mesh(trussGeo, trussMat);
+    truss.position.set(0, 12, 0);
+    scene.add(truss);
+
+    // Ambient & Directional Lighting untuk Fisik Panggung
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.15);
+    scene.add(ambLight);
+
+    // 3. SOUND SYSTEM STACK
+    function createSoundStack(xPos) {
+      const group = new THREE.Group();
+      group.position.set(xPos, 0, 0);
+      const boxMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.8 });
+      const grillMat = new THREE.MeshStandardMaterial({ color: 0x22252c, roughness: 0.5, metalness: 0.5 });
+
+      for (let i = 0; i < 2; i++) {
+        const sub = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.2, 2.5), boxMat);
+        sub.position.set(0, 1.1 + (i * 2.3), 0);
+        const grill = new THREE.Mesh(new THREE.BoxGeometry(4.3, 2.0, 0.1), grillMat);
+        grill.position.set(0, 1.1 + (i * 2.3), 1.25);
+        group.add(sub, grill);
+      }
+      for (let j = 0; j < 2; j++) {
+        const top = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.5, 2.0), boxMat);
+        top.position.set(0, 5.4 + (j * 1.6), 0);
+        const grill = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.3, 0.1), grillMat);
+        grill.position.set(0, 5.4 + (j * 1.6), 1.01);
+        group.add(top, grill);
+      }
+      scene.add(group);
+    }
+    createSoundStack(-15);
+    createSoundStack(15);
+
+    // 4. SHADER VOLUMETRIC BEAM (Cahaya Realistis Halus / Soft Gradient Edge)
+    const VolumetricBeamShader = {
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vWorldPosition;
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          vNormal = normalize(normalMatrix * normal);
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 color;
+        uniform float opacity;
+        uniform float goboType; // 0: Solid, 1: Ring, 2: Dots, 3: Star
+        varying vec3 vNormal;
+        varying vec2 vUv;
+
+        void main() {
+          // Soft Edge Gradient (Fresnel Effect)
+          float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 2.0);
+          float fade = smoothstep(0.0, 1.0, vUv.y); // Vertical Falloff Fade
+
+          float pattern = 1.0;
+          if (goboType > 0.5 && goboType < 1.5) { // Ring
+            pattern = smoothstep(0.2, 0.3, abs(sin(vUv.x * 12.56)));
+          } else if (goboType > 1.5 && goboType < 2.5) { // Dots
+            pattern = step(0.6, sin(vUv.x * 30.0) * cos(vUv.y * 30.0));
+          } else if (goboType > 2.5) { // Star
+            pattern = step(0.4, abs(sin(vUv.x * 18.0)));
+          }
+
+          vec3 finalColor = color * intensity * fade * pattern;
+          gl_FragColor = vec4(finalColor, opacity * intensity * fade * pattern);
+        }
+      `
+    };
+
+    // 5. FIXTURE CREATION (BEAM MULTI-PRISM + PAR + STROBE)
+    const beamFixtures = [];
+    const parFixtures = [];
+    const strobeFixtures = [];
+
+    const fixtureCount = 4;
+    const spacing = 6.5;
+    const startX = -((fixtureCount - 1) * spacing) / 2;
+
+    for (let i = 0; i < fixtureCount; i++) {
+      const x = startX + (i * spacing);
+
+      // --- MOVING HEAD BEAM (WITH MULTI-PRISM SUB-BEAMS) ---
+      const beamGroup = new THREE.Group();
+      beamGroup.position.set(x, 12, 0);
+
+      const panGroup = new THREE.Group();
+      const tiltGroup = new THREE.Group();
+      
+      const headMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 0.5, 1.0, 16),
+        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 })
+      );
+      headMesh.rotation.x = Math.PI / 2;
+      tiltGroup.add(headMesh);
+      panGroup.add(tiltGroup);
+      beamGroup.add(panGroup);
+
+      // Prism Sub-Beams Container (Maximum 8 Beams per Fixture)
+      const prismContainer = new THREE.Group();
+      tiltGroup.add(prismContainer);
+
+      const subBeams = [];
+      const maxPrismBeams = 8;
+
+      for (let p = 0; p < maxPrismBeams; p++) {
+        const beamConeGeo = new THREE.ConeGeometry(1.8, 22, 32, 1, true);
+        beamConeGeo.translate(0, -11, 0);
+
+        const beamMat = new THREE.ShaderMaterial({
+          vertexShader: VolumetricBeamShader.vertexShader,
+          fragmentShader: VolumetricBeamShader.fragmentShader,
+          uniforms: {
+            color: { value: new THREE.Color(0xffffff) },
+            opacity: { value: 0.8 },
+            goboType: { value: 0.0 }
+          },
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+
+        const beamMesh = new THREE.Mesh(beamConeGeo, beamMat);
+        beamMesh.rotation.x = -Math.PI / 2;
+
+        const beamSpot = new THREE.SpotLight(0xffffff, 4);
+        beamSpot.angle = Math.PI / 8;
+        beamSpot.penumbra = 0.9;
+        beamSpot.distance = 32;
+        beamMesh.add(beamSpot);
+        beamSpot.target.position.set(0, -15, 0);
+        beamMesh.add(beamSpot.target);
+
+        prismContainer.add(beamMesh);
+        subBeams.push({ mesh: beamMesh, material: beamMat, spot: beamSpot });
+      }
+
+      scene.add(beamGroup);
+      beamFixtures.push({ index: i, panGroup, tiltGroup, prismContainer, subBeams });
+
+      // --- PAR LED FIXTURE ---
+      const parGroup = new THREE.Group();
+      parGroup.position.set(x - 1.2, 12, 0);
+
+      const parMat = new THREE.ShaderMaterial({
+        vertexShader: VolumetricBeamShader.vertexShader,
+        fragmentShader: VolumetricBeamShader.fragmentShader,
+        uniforms: {
+          color: { value: new THREE.Color(0xffffff) },
+          opacity: { value: 0.5 },
+          goboType: { value: 0.0 }
+        },
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+
+      const parConeGeo = new THREE.ConeGeometry(3.5, 18, 32, 1, true);
+      parConeGeo.translate(0, -9, 0);
+      const parMesh = new THREE.Mesh(parConeGeo, parMat);
+      parMesh.rotation.x = Math.PI;
+      parGroup.add(parMesh);
+
+      scene.add(parGroup);
+      parFixtures.push({ index: i, parMat });
+
+      // --- STROBE PANEL FIXTURE ---
+      const strobeGroup = new THREE.Group();
+      strobeGroup.position.set(x + 1.2, 12, 0);
+
+      const strobeMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending
+      });
+      const strobeMesh = new THREE.Mesh(new THREE.BoxGeometry(1.4, 18, 1.4), strobeMat);
+      strobeMesh.position.set(0, -9, 0);
+      strobeGroup.add(strobeMesh);
+
+      scene.add(strobeGroup);
+      strobeFixtures.push({ strobeMat });
+    }
+
+    // 6. LOGIKA DMX & EFEX CONTROL
+    const beamDim = document.getElementById('beam-dim');
+    const prismMode = document.getElementById('prism-mode');
+    const prismAngle = document.getElementById('prism-angle');
+    const goboSelect = document.getElementById('gobo-select');
+    const beamColor = document.getElementById('beam-color');
+
+    const beamPan = document.getElementById('beam-pan');
+    const beamTilt = document.getElementById('beam-tilt');
+    const autoShape = document.getElementById('auto-shape');
+    const shapeSpeed = document.getElementById('shape-speed');
+
+    const parDim = document.getElementById('par-dim');
+    const parColor = document.getElementById('par-color');
+    const strobeDim = document.getElementById('strobe-dim');
+    const strobeSpeed = document.getElementById('strobe-speed');
+    const fogDensity = document.getElementById('fog-density');
+
+    let isBlackout = false;
+
+    function updateDMX() {
+      if (isBlackout) return;
+
+      // Update Fog
+      scene.fog.density = parseFloat(fogDensity.value);
+
+      // Update Beam & Prism Logic (Mencar)
+      const pVal = THREE.MathUtils.degToRad(parseFloat(beamPan.value));
+      const tVal = THREE.MathUtils.degToRad(parseFloat(beamTilt.value));
+      const bColorHex = new THREE.Color(beamColor.value);
+      const bDimVal = parseFloat(beamDim.value);
+      const pCount = parseInt(prismMode.value);
+      const pAngle = parseFloat(prismAngle.value);
+
+      let goboVal = 0.0;
+      if (goboSelect.value === 'ring') goboVal = 1.0;
+      else if (goboSelect.value === 'dots') goboVal = 2.0;
+      else if (goboSelect.value === 'stars') goboVal = 3.0;
+
+      beamFixtures.forEach((f) => {
+        // Rotasi Pan/Tilt Manual (Jikan Shape OFF)
+        if (autoShape.value === 'none') {
+          f.panGroup.rotation.y = pVal;
+          f.tiltGroup.rotation.x = tVal;
+        }
+
+        // Atur Mencar / Sub-Beams (Prism)
+        f.subBeams.forEach((sb, pIdx) => {
+          if (pIdx < pCount) {
+            sb.mesh.visible = true;
+            sb.material.uniforms.color.value = bColorHex;
+            sb.material.uniforms.opacity.value = bDimVal * 0.8;
+            sb.material.uniforms.goboType.value = goboVal;
+            sb.spot.color = bColorHex;
+            sb.spot.intensity = bDimVal * 4;
+
+            // Sudut Mencar (Prism Angle Distribution)
+            if (pCount > 1) {
+              const rotAngle = (pIdx / pCount) * Math.PI * 2;
+              sb.mesh.rotation.z = Math.cos(rotAngle) * pAngle;
+              sb.mesh.rotation.y = Math.sin(rotAngle) * pAngle;
+            } else {
+              sb.mesh.rotation.z = 0;
+              sb.mesh.rotation.y = 0;
+            }
+          } else {
+            sb.mesh.visible = false;
+          }
+        });
+      });
+
+      // Update Par LED
+      const pDimVal = parseFloat(parDim.value);
+      const pColorHex = new THREE.Color(parColor.value);
+      parFixtures.forEach((f) => {
+        f.parMat.uniforms.color.value = pColorHex;
+        f.parMat.uniforms.opacity.value = pDimVal * 0.5;
+      });
+
+      // Update Strobe Static
+      const sDimVal = parseFloat(strobeDim.value);
+      strobeFixtures.forEach((f) => {
+        if (parseFloat(strobeSpeed.value) === 0) {
+          f.strobeMat.opacity = sDimVal * 0.8;
+        }
+      });
+    }
+
+    // Event Listeners DMX
+    [beamDim, prismMode, prismAngle, goboSelect, beamColor, beamPan, beamTilt, autoShape, shapeSpeed, parDim, parColor, strobeDim, strobeSpeed, fogDensity].forEach(el => {
+      el.addEventListener('input', updateDMX);
+    });
+
+    // 7. PRESET SCENE SHORTCUTS
+    window.applyScene = function(type) {
+      isBlackout = false;
+      document.getElementById('bo-btn').classList.remove('active');
+
+      if (type === 'white') {
+        beamColor.value = "#ffffff";
+        parColor.value = "#ffffff";
+        beamDim.value = 1;
+        prismMode.value = "1";
+        autoShape.value = "none";
+        strobeSpeed.value = 0;
+      } else if (type === 'prism') {
+        beamColor.value = "#00e5ff";
+        parColor.value = "#ff0055";
+        beamDim.value = 1;
+        prismMode.value = "8";
+        prismAngle.value = 0.5;
+        autoShape.value = "circle";
+      } else if (type === 'rgb') {
+        beamColor.value = "#ff0055";
+        parColor.value = "#00e5ff";
+        prismMode.value = "3";
+        autoShape.value = "eight";
+      } else if (type === 'warm') {
+        beamColor.value = "#ff9900";
+        parColor.value = "#ff3300";
+        prismMode.value = "1";
+        autoShape.value = "wave";
+      }
+      updateDMX();
+    };
+
+    window.toggleBlackout = function() {
+      isBlackout = !isBlackout;
+      const boBtn = document.getElementById('bo-btn');
+      
+      if (isBlackout) {
+        boBtn.classList.add('active');
+        beamFixtures.forEach(f => f.subBeams.forEach(sb => sb.mesh.visible = false));
+        parFixtures.forEach(f => f.parMat.uniforms.opacity.value = 0);
+        strobeFixtures.forEach(f => f.strobeMat.opacity = 0);
+      } else {
+        boBtn.classList.remove('active');
+        updateDMX();
+      }
+    };
+
+    // 8. AUDIO PLAYER
+    const audioInput = document.getElementById('audio-file');
+    const bgAudio = document.getElementById('bg-audio');
+    const playBtn = document.getElementById('play-btn');
+
+    audioInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        bgAudio.src = URL.createObjectURL(file);
+        bgAudio.play();
+        playBtn.innerText = '⏸';
+      }
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (!bgAudio.src) return alert('Select audio file first!');
+      if (bgAudio.paused) { bgAudio.play(); playBtn.innerText = '⏸'; }
+      else { bgAudio.pause(); playBtn.innerText = '▶'; }
+    });
+
+    // 9. RENDER LOOP (SHAPE MOVEMENT & STROBE ANIMATION)
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+
+      const time = clock.getElapsedTime();
+
+      if (!isBlackout) {
+        // Auto Shape Movements
+        const shapeType = autoShape.value;
+        const speed = parseFloat(shapeSpeed.value);
+
+        if (shapeType !== 'none' && speed > 0) {
+          beamFixtures.forEach((f, idx) => {
+            const offset = idx * 0.4;
+            if (shapeType === 'circle') {
+              f.panGroup.rotation.y = Math.sin(time * speed + offset) * 0.8;
+              f.tiltGroup.rotation.x = Math.cos(time * speed + offset) * 0.4;
+            } else if (shapeType === 'eight') {
+              f.panGroup.rotation.y = Math.sin(time * speed + offset) * 1.0;
+              f.tiltGroup.rotation.x = Math.sin(time * speed * 2 + offset) * 0.5;
+            } else if (shapeType === 'wave') {
+              f.panGroup.rotation.y = Math.sin(time * speed + offset) * 1.2;
+            }
+          });
+        }
+
+        // Strobe FX Rate
+        const sSpeed = parseFloat(strobeSpeed.value);
+        if (sSpeed > 0) {
+          const sDimVal = parseFloat(strobeDim.value);
+          const flash = (Math.sin(time * sSpeed) > 0) ? sDimVal * 0.9 : 0;
+          strobeFixtures.forEach(f => f.strobeMat.opacity = flash);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // Default Init
+    updateDMX();
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
